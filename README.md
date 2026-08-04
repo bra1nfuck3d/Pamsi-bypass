@@ -6,11 +6,10 @@ So this simple script basically does the same thing that Victor Khoury's bypass 
 
 
 
-# Compiling into exe file
+## Compiling into exe file
 
 Ok this is the simplest part of all, using pyinstaller, you can very easily convert any python script into a exe file, sometimes, it may complain about library not found (the exe), in this case you need to find the-library.dll inside your python interpreters path and pass it to pyinstaller with --add-binary
 
 ```
 pyinstaller -F main.py
-
 ```
